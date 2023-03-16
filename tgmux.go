@@ -1,6 +1,7 @@
 package tgmux
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -19,6 +20,8 @@ type TgHandler struct {
 	userStates *UserStateManager
 	log        Logger
 	messages   *Messages
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
 func NewHandler(token string) (*TgHandler, error) {
@@ -26,26 +29,51 @@ func NewHandler(token string) (*TgHandler, error) {
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &TgHandler{bot: bot,
 			croutes:    make(map[string]func(*Ctx)),
 			sroutes:    make(map[string]func(*Ctx)),
 			userStates: NewUserStateManager(),
 			log:        log.Default(),
-			messages:   defaultMessages},
+			messages:   defaultMessages,
+			ctx:        ctx,
+			cancel:     cancel},
 
 		nil
 }
 
-func NewHandlerWithLogger(token string, logger Logger) (*TgHandler, error) {
+func NewHandlerWithContext(ctx context.Context, cancel context.CancelFunc, token string) (*TgHandler, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		return nil, err
 	}
+
 	return &TgHandler{bot: bot,
 			croutes:    make(map[string]func(*Ctx)),
 			sroutes:    make(map[string]func(*Ctx)),
 			userStates: NewUserStateManager(),
-			log:        logger},
+			log:        log.Default(),
+			messages:   defaultMessages,
+			ctx:        ctx,
+			cancel:     cancel},
+
+		nil
+}
+
+func NewHandlerWithLogger(token string, logger Logger) (*TgHandler, error) { //TODO DELETE AND MAKE METHOD
+	bot, err := tgbotapi.NewBotAPI(token)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	return &TgHandler{bot: bot,
+			croutes:    make(map[string]func(*Ctx)),
+			sroutes:    make(map[string]func(*Ctx)),
+			userStates: NewUserStateManager(),
+			log:        logger, ctx: ctx,
+			cancel: cancel},
 		nil
 }
 
@@ -56,7 +84,7 @@ func (t *TgHandler) HandleState(command string, f func(*Ctx)) {
 	t.sroutes[command] = f
 }
 
-func (t *TgHandler) processUpdate(update *tgbotapi.Update) {
+func (t *TgHandler) processUpdate(ctx context.Context, update *tgbotapi.Update) {
 	if update.Message != nil {
 		userID := update.Message.From.ID
 		userState := t.userStates.GetUserState(int64(userID))
@@ -66,7 +94,14 @@ func (t *TgHandler) processUpdate(update *tgbotapi.Update) {
 		if currentFunction != "" {
 			handler, ok := t.sroutes[currentFunction]
 			if ok {
-				go handler(mctx)
+				go func() {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+						handler(mctx)
+					}
+				}()
 			} else {
 				t.userStates.ResetUserFunction(int64(userID))
 				t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.InternalError))
@@ -77,7 +112,14 @@ func (t *TgHandler) processUpdate(update *tgbotapi.Update) {
 		}
 		handler, ok := t.croutes[update.Message.Text]
 		if ok {
-			go handler(mctx)
+			go func() {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					handler(mctx)
+				}
+			}()
 		} else {
 			t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.NoCommand))
 		}
@@ -89,9 +131,18 @@ func (t *TgHandler) Start() {
 	u.Timeout = 60
 	updates := t.bot.GetUpdatesChan(u)
 
-	for update := range updates {
-		t.processUpdate(&update)
+	for {
+		select {
+		case <-t.ctx.Done():
+			return
+		case update := <-updates:
+			t.processUpdate(t.ctx, &update)
+		}
 	}
+}
+
+func (t *TgHandler) Stop() {
+	t.cancel()
 }
 
 func (t *TgHandler) SetCustomMessages(messages *Messages) {
