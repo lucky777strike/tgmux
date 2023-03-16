@@ -11,9 +11,9 @@ import (
 
 type TgHandler struct {
 	bot        *tgbotapi.BotAPI
-	croutes    map[string]func(*Ctx) //commandroutes
-	sroutes    map[string]func(*Ctx)
-	userStates *UserStateManager
+	croutes    map[string]func(*Ctx) //command routes
+	sroutes    map[string]func(*Ctx) //state routes
+	userStates UserStateManagerInterface
 	log        Logger
 	messages   *Messages
 	ctx        context.Context

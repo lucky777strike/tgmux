@@ -7,7 +7,7 @@ import (
 type Ctx struct {
 	Msg   *tgbotapi.Message
 	Bot   *tgbotapi.BotAPI
-	State *UserState
+	State UserStateInterface
 	Log   Logger
 }
 

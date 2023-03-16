@@ -2,6 +2,23 @@ package tgmux
 
 import "sync"
 
+type UserStateInterface interface {
+	GetCurrentFunction() string
+	SetCurrentFunction(function string)
+	GetData() map[string]interface{}
+	SetData(data map[string]interface{})
+	UpdateData(key string, value interface{})
+}
+
+// UserStateManagerInterface defines an interface for UserStateManager.
+type UserStateManagerInterface interface {
+	GetUserState(userID int64) UserStateInterface
+	SetUserStage(userID int64, function, stage string)
+	ResetUserFunction(userID int64)
+}
+
+// The existing UserState and UserStateManager structs now implement their respective interfaces.
+
 type UserStateManager struct {
 	userStates map[int64]*UserState
 	mu         sync.RWMutex
@@ -26,7 +43,7 @@ func NewUserStateManager() *UserStateManager {
 	}
 }
 
-func (m *UserStateManager) GetUserState(userID int64) *UserState {
+func (m *UserStateManager) GetUserState(userID int64) UserStateInterface {
 	m.mu.RLock()
 	state, exists := m.userStates[userID]
 	m.mu.RUnlock()
