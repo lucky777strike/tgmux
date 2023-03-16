@@ -1,6 +1,8 @@
 package tgmux
 
 import (
+	"log"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -13,6 +15,7 @@ type TgHandler struct {
 	croutes    map[string]func(*Ctx) //commandroutes
 	sroutes    map[string]func(*Ctx)
 	userStates *UserStateManager
+	log        Logger
 }
 
 func NewHandler(token string) (*TgHandler, error) {
@@ -23,7 +26,21 @@ func NewHandler(token string) (*TgHandler, error) {
 	return &TgHandler{bot: bot,
 			croutes:    make(map[string]func(*Ctx)),
 			sroutes:    make(map[string]func(*Ctx)),
-			userStates: NewUserStateManager()},
+			userStates: NewUserStateManager(),
+			log:        log.Default()},
+		nil
+}
+
+func NewHandlerWithLogger(token string, logger Logger) (*TgHandler, error) {
+	bot, err := tgbotapi.NewBotAPI(token)
+	if err != nil {
+		return nil, err
+	}
+	return &TgHandler{bot: bot,
+			croutes:    make(map[string]func(*Ctx)),
+			sroutes:    make(map[string]func(*Ctx)),
+			userStates: NewUserStateManager(),
+			log:        logger},
 		nil
 }
 
@@ -38,7 +55,7 @@ func (t *TgHandler) processUpdate(update *tgbotapi.Update) {
 	if update.Message != nil {
 		userID := update.Message.From.ID
 		userState := t.userStates.GetUserState(int64(userID))
-		mctx := &Ctx{update.Message, t.bot, userState}
+		mctx := &Ctx{update.Message, t.bot, userState, t.log}
 
 		if userState.CurrentFunction != "" {
 			handler, ok := t.sroutes[userState.CurrentFunction]
