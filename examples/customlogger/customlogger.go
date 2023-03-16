@@ -18,7 +18,8 @@ func main() {
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(logrus.WarnLevel)
 
-	handler, err := tgmux.NewHandlerWithLogger(botToken, logger)
+	handler, err := tgmux.NewHandler(botToken)
+	handler.SetLogger(logger)
 	if err != nil {
 		log.Panic(err)
 	}

@@ -61,20 +61,8 @@ func NewHandlerWithContext(ctx context.Context, cancel context.CancelFunc, token
 		nil
 }
 
-func NewHandlerWithLogger(token string, logger Logger) (*TgHandler, error) { //TODO DELETE AND MAKE METHOD
-	bot, err := tgbotapi.NewBotAPI(token)
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-
-	return &TgHandler{bot: bot,
-			croutes:    make(map[string]func(*Ctx)),
-			sroutes:    make(map[string]func(*Ctx)),
-			userStates: NewUserStateManager(),
-			log:        logger, ctx: ctx,
-			cancel: cancel},
-		nil
+func (t *TgHandler) SetLogger(logger Logger) {
+	t.log = logger
 }
 
 func (t *TgHandler) HandleCmd(command string, f func(*Ctx)) {
