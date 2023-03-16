@@ -62,14 +62,15 @@ func (t *TgHandler) processUpdate(update *tgbotapi.Update) {
 		userState := t.userStates.GetUserState(int64(userID))
 		mctx := &Ctx{update.Message, t.bot, userState, t.log}
 
-		if userState.CurrentFunction != "" {
-			handler, ok := t.sroutes[userState.CurrentFunction]
+		currentFunction := userState.GetCurrentFunction()
+		if currentFunction != "" {
+			handler, ok := t.sroutes[currentFunction]
 			if ok {
 				go handler(mctx)
 			} else {
-				t.userStates.ResetUserFunction((int64(userID)))
+				t.userStates.ResetUserFunction(int64(userID))
 				t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.InternalError))
-				errorMsg := fmt.Sprintf("State handler not found for user %d, state function: %s", userID, userState.CurrentFunction)
+				errorMsg := fmt.Sprintf("State handler not found for user %d, state function: %s", userID, currentFunction)
 				t.log.Println(errors.New(errorMsg))
 			}
 			return

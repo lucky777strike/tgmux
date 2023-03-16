@@ -42,36 +42,38 @@ func startCommand(c *tgmux.Ctx) {
 }
 
 func sumCommand(c *tgmux.Ctx) {
-	if c.State.CurrentFunction == "" {
-		c.State.CurrentFunction = "sum"
+	currentFunction := c.State.GetCurrentFunction()
+	if currentFunction == "" {
+		c.State.SetCurrentFunction("sum")
 		reply := tgbotapi.NewMessage(c.Msg.Chat.ID, "Please send number one")
 		reply.ReplyToMessageID = c.Msg.MessageID
 		_, err := c.Bot.Send(reply)
 		if err != nil {
 			log.Printf("Error sending message: %v\n", err)
 		}
-	} else if _, ok := c.State.Data["first"]; !ok {
+	} else if _, ok := c.State.GetData()["first"]; !ok {
 		number1, err := strconv.Atoi(c.Msg.Text)
 		if err != nil {
 			c.SendErrorMessage(errors.New("Invalid input. Please send a valid integer."))
 			return
 		}
-		c.State.Data["first"] = number1
+		c.State.UpdateData("first", number1)
 		reply := tgbotapi.NewMessage(c.Msg.Chat.ID, "Please send number two")
 		reply.ReplyToMessageID = c.Msg.MessageID
 		_, err = c.Bot.Send(reply)
 		if err != nil {
 			log.Printf("Error sending message: %v\n", err)
 		}
-	} else if _, ok := c.State.Data["second"]; !ok {
+	} else if _, ok := c.State.GetData()["second"]; !ok {
 		number2, err := strconv.Atoi(c.Msg.Text)
 		if err != nil {
 			c.SendErrorMessage(errors.New("Invalid input. Please send a valid integer."))
 			return
 		}
-		c.State.Data["second"] = number2
+		c.State.UpdateData("second", number2)
 
-		number1 := c.State.Data["first"].(int)
+		data := c.State.GetData()
+		number1 := data["first"].(int)
 		sum := number1 + number2
 		reply := tgbotapi.NewMessage(c.Msg.Chat.ID, fmt.Sprintf("The sum of the two numbers is: %d", sum))
 		reply.ReplyToMessageID = c.Msg.MessageID
@@ -79,7 +81,7 @@ func sumCommand(c *tgmux.Ctx) {
 		if err != nil {
 			log.Printf("Error sending message: %v\n", err)
 		}
-		c.State.CurrentFunction = ""
-		c.State.Data = make(map[string]interface{})
+		c.State.SetCurrentFunction("")
+		c.State.SetData(make(map[string]interface{}))
 	}
 }
