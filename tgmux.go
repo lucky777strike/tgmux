@@ -1,6 +1,8 @@
 package tgmux
 
 import (
+	"errors"
+	"fmt"
 	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -16,6 +18,7 @@ type TgHandler struct {
 	sroutes    map[string]func(*Ctx)
 	userStates *UserStateManager
 	log        Logger
+	messages   *Messages
 }
 
 func NewHandler(token string) (*TgHandler, error) {
@@ -27,7 +30,9 @@ func NewHandler(token string) (*TgHandler, error) {
 			croutes:    make(map[string]func(*Ctx)),
 			sroutes:    make(map[string]func(*Ctx)),
 			userStates: NewUserStateManager(),
-			log:        log.Default()},
+			log:        log.Default(),
+			messages:   defaultMessages},
+
 		nil
 }
 
@@ -63,7 +68,9 @@ func (t *TgHandler) processUpdate(update *tgbotapi.Update) {
 				go handler(mctx)
 			} else {
 				t.userStates.ResetUserFunction((int64(userID)))
-				t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Internal error,try again"))
+				t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.InternalError))
+				errorMsg := fmt.Sprintf("State handler not found for user %d, state function: %s", userID, userState.CurrentFunction)
+				t.log.Println(errors.New(errorMsg))
 			}
 			return
 		}
@@ -71,7 +78,7 @@ func (t *TgHandler) processUpdate(update *tgbotapi.Update) {
 		if ok {
 			go handler(mctx)
 		} else {
-			t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "No such command"))
+			t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.NoCommand))
 		}
 	}
 }
@@ -84,4 +91,8 @@ func (t *TgHandler) Start() {
 	for update := range updates {
 		t.processUpdate(&update)
 	}
+}
+
+func (t *TgHandler) SetCustomMessages(messages *Messages) {
+	t.messages = messages
 }
