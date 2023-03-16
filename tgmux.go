@@ -1,3 +1,6 @@
+// Package tgmux provides a simple way to create a Telegram bot using a handler
+// with command and state routing. It manages user state and handles incoming
+// messages based on user's current state.
 package tgmux
 
 import (
@@ -9,6 +12,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// NewHandler initializes a new TgHandler with the provided token.
+// It returns an error if the bot fails to initialize.
 type TgHandler struct {
 	bot        *tgbotapi.BotAPI
 	croutes    map[string]func(*Ctx) //command routes
@@ -20,6 +25,8 @@ type TgHandler struct {
 	cancel     context.CancelFunc
 }
 
+// NewHandler initializes a new TgHandler with the provided token.
+// It returns an error if the bot fails to initialize.
 func NewHandler(token string) (*TgHandler, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -39,6 +46,8 @@ func NewHandler(token string) (*TgHandler, error) {
 		nil
 }
 
+// NewHandlerWithContext initializes a new TgHandler with the provided context,
+// cancel function, and token. It returns an error if the bot fails to initialize.
 func NewHandlerWithContext(ctx context.Context, cancel context.CancelFunc, token string) (*TgHandler, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -57,17 +66,24 @@ func NewHandlerWithContext(ctx context.Context, cancel context.CancelFunc, token
 		nil
 }
 
+// SetLogger sets a custom logger for the TgHandler.
 func (t *TgHandler) SetLogger(logger Logger) {
 	t.log = logger
 }
 
+// HandleCmd adds a command route to the TgHandler.
 func (t *TgHandler) HandleCmd(command string, f func(*Ctx)) {
 	t.croutes[command] = f
 }
+
+// HandleState adds a state route to the TgHandler.
 func (t *TgHandler) HandleState(command string, f func(*Ctx)) {
 	t.sroutes[command] = f
 }
 
+// processUpdate processes incoming updates from the Telegram API.
+// It handles commands and state-based functions depending on the user's
+// current state.
 func (t *TgHandler) processUpdate(ctx context.Context, update *tgbotapi.Update) {
 	if update.Message != nil {
 		userID := update.Message.From.ID
@@ -110,6 +126,8 @@ func (t *TgHandler) processUpdate(ctx context.Context, update *tgbotapi.Update) 
 	}
 }
 
+// Start begins processing updates from the Telegram API. It will continue
+// until the TgHandler's context is canceled.
 func (t *TgHandler) Start() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -125,10 +143,12 @@ func (t *TgHandler) Start() {
 	}
 }
 
+// Stop cancels the TgHandler's context, stopping the processing of updates.
 func (t *TgHandler) Stop() {
 	t.cancel()
 }
 
+// SetCustomMessages sets custom user messages..
 func (t *TgHandler) SetCustomMessages(messages *Messages) {
 	t.messages = messages
 }

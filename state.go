@@ -10,20 +10,19 @@ type UserStateInterface interface {
 	UpdateData(key string, value interface{})
 }
 
-// UserStateManagerInterface defines an interface for UserStateManager.
-type UserStateManagerInterface interface {
+type UserStateManagerInterface interface { //TODO Redis
 	GetUserState(userID int64) UserStateInterface
 	SetUserStage(userID int64, function, stage string)
 	ResetUserFunction(userID int64)
 }
 
-// The existing UserState and UserStateManager structs now implement their respective interfaces.
-
+// UserStateManager is a struct responsible for managing user states for a Telegram bot.
 type UserStateManager struct {
 	userStates map[int64]*UserState
 	mu         sync.RWMutex
 }
 
+// UserState is a struct that represents an individual user state.
 type UserState struct {
 	currentFunction string
 	data            map[string]interface{}
@@ -43,6 +42,7 @@ func NewUserStateManager() *UserStateManager {
 	}
 }
 
+// GetUserState retrieves the UserState for a given userID or creates a new one if it doesn't exist.
 func (m *UserStateManager) GetUserState(userID int64) UserStateInterface {
 	m.mu.RLock()
 	state, exists := m.userStates[userID]
@@ -61,6 +61,7 @@ func (m *UserStateManager) GetUserState(userID int64) UserStateInterface {
 	return state
 }
 
+// GetCurrentFunction safely retrieves the state(currentFunction) value.
 func (u *UserState) GetCurrentFunction() string {
 	u.mu.RLock()
 	defer u.mu.RUnlock()
@@ -100,11 +101,13 @@ func (u *UserState) UpdateData(key string, value interface{}) {
 	u.mu.Unlock()
 }
 
+// SetUserStage sets the user's stage by updating their current function and stage.
 func (m *UserStateManager) SetUserStage(userID int64, function, stage string) {
 	state := m.GetUserState(userID)
 	state.SetCurrentFunction(function)
 }
 
+// ResetUserFunction resets the user's current function and clears their data.
 func (m *UserStateManager) ResetUserFunction(userID int64) {
 	state := m.GetUserState(userID)
 	state.SetCurrentFunction("")

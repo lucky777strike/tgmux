@@ -1,5 +1,6 @@
 package tgmux
 
+// interface for standart or custom logger
 type Logger interface {
 	Print(v ...interface{})
 	Printf(format string, v ...interface{})
