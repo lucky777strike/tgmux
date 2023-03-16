@@ -9,10 +9,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func Test() string {
-	return "Test passed"
-}
-
 type TgHandler struct {
 	bot        *tgbotapi.BotAPI
 	croutes    map[string]func(*Ctx) //commandroutes
