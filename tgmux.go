@@ -22,7 +22,6 @@ type TgHandler struct {
 	log        Logger
 	messages   *Messages
 	ctx        context.Context
-	cancel     context.CancelFunc
 }
 
 // NewHandler initializes a new TgHandler with the provided token.
@@ -32,7 +31,7 @@ func NewHandler(token string) (*TgHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	return &TgHandler{bot: bot,
 			croutes:    make(map[string]func(*Ctx)),
@@ -40,15 +39,14 @@ func NewHandler(token string) (*TgHandler, error) {
 			userStates: NewUserStateManager(),
 			log:        log.Default(),
 			messages:   defaultMessages,
-			ctx:        ctx,
-			cancel:     cancel},
+			ctx:        ctx},
 
 		nil
 }
 
 // NewHandlerWithContext initializes a new TgHandler with the provided context,
 // cancel function, and token. It returns an error if the bot fails to initialize.
-func NewHandlerWithContext(ctx context.Context, cancel context.CancelFunc, token string) (*TgHandler, error) {
+func NewHandlerWithContext(ctx context.Context, token string) (*TgHandler, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		return nil, err
@@ -60,8 +58,7 @@ func NewHandlerWithContext(ctx context.Context, cancel context.CancelFunc, token
 			userStates: NewUserStateManager(),
 			log:        log.Default(),
 			messages:   defaultMessages,
-			ctx:        ctx,
-			cancel:     cancel},
+			ctx:        ctx},
 
 		nil
 }
@@ -141,11 +138,6 @@ func (t *TgHandler) Start() {
 			t.processUpdate(t.ctx, &update)
 		}
 	}
-}
-
-// Stop cancels the TgHandler's context, stopping the processing of updates.
-func (t *TgHandler) Stop() {
-	t.cancel()
 }
 
 // SetCustomMessages sets custom user messages..

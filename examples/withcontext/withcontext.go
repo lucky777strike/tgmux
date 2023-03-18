@@ -17,7 +17,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	handler, err := tgmux.NewHandlerWithContext(ctx, cancel, botToken)
+	handler, err := tgmux.NewHandlerWithContext(ctx, botToken)
 	if err != nil {
 		log.Panic(err)
 	}
