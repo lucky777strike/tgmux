@@ -15,13 +15,15 @@ import (
 // NewHandler initializes a new TgHandler with the provided token.
 // It returns an error if the bot fails to initialize.
 type TgHandler struct {
-	bot        *tgbotapi.BotAPI
-	croutes    map[string]func(*Ctx) //command routes
-	sroutes    map[string]func(*Ctx) //state routes
-	userStates UserStateManagerInterface
-	log        Logger
-	messages   *Messages
-	ctx        context.Context
+	bot         *tgbotapi.BotAPI
+	croutes     map[string]func(*Ctx) //command routes
+	sroutes     map[string]func(*Ctx) //state routes
+	defroute    func(*Ctx)
+	userStates  UserStateManagerInterface
+	log         Logger
+	messages    *Messages
+	middlewares []func(*Ctx)
+	ctx         context.Context
 }
 
 // NewHandler initializes a new TgHandler with the provided token.
@@ -73,6 +75,10 @@ func (t *TgHandler) HandleCmd(command string, f func(*Ctx)) {
 	t.croutes[command] = f
 }
 
+func (t *TgHandler) HandleDefault(f func(*Ctx)) {
+	t.defroute = f
+}
+
 // HandleState adds a state route to the TgHandler.
 func (t *TgHandler) HandleState(command string, f func(*Ctx)) {
 	t.sroutes[command] = f
@@ -109,6 +115,11 @@ func (t *TgHandler) processUpdate(ctx context.Context, update *tgbotapi.Update) 
 		}
 		handler, ok := t.croutes[update.Message.Text]
 		if ok {
+			// Apply middlewares
+			for _, middleware := range t.middlewares {
+				middleware(mctx)
+			}
+
 			go func() {
 				select {
 				case <-ctx.Done():
@@ -118,7 +129,18 @@ func (t *TgHandler) processUpdate(ctx context.Context, update *tgbotapi.Update) 
 				}
 			}()
 		} else {
-			t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.NoCommand))
+			go func() {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					if t.defroute != nil {
+						t.defroute(mctx)
+					}
+					t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.NoCommand))
+				}
+			}()
+
 		}
 	}
 }
@@ -143,4 +165,8 @@ func (t *TgHandler) Start() {
 // SetCustomMessages sets custom user messages..
 func (t *TgHandler) SetCustomMessages(messages *Messages) {
 	t.messages = messages
+}
+
+func (t *TgHandler) AddMiddleware(middleware func(*Ctx)) {
+	t.middlewares = append(t.middlewares, middleware)
 }
