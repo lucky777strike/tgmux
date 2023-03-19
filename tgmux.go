@@ -136,8 +136,10 @@ func (t *TgHandler) processUpdate(ctx context.Context, update *tgbotapi.Update) 
 				default:
 					if t.defroute != nil {
 						t.defroute(mctx)
+					} else {
+						t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.NoCommand))
 					}
-					t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, t.messages.NoCommand))
+
 				}
 			}()
 
