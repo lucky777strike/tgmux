@@ -92,6 +92,11 @@ func (t *TgHandler) processUpdate(ctx context.Context, update *tgbotapi.Update) 
 		userID := update.Message.From.ID
 		userState := t.userStates.GetUserState(int64(userID))
 		mctx := &Ctx{update.Message, t.bot, userState, t.log}
+		go func() {
+			for _, middleware := range t.middlewares {
+				middleware(mctx)
+			}
+		}()
 
 		currentFunction := userState.GetCurrentFunction()
 		if currentFunction != "" {
@@ -116,9 +121,6 @@ func (t *TgHandler) processUpdate(ctx context.Context, update *tgbotapi.Update) 
 		handler, ok := t.croutes[update.Message.Text]
 		if ok {
 			// Apply middlewares
-			for _, middleware := range t.middlewares {
-				middleware(mctx)
-			}
 
 			go func() {
 				select {
